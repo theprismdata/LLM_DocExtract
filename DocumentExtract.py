@@ -6,8 +6,9 @@ import pdfplumber
 from logging.handlers import TimedRotatingFileHandler
 from langchain.document_loaders import UnstructuredWordDocumentLoader
 from langchain.document_loaders import TextLoader
-from HwpParser import HWPExtractor
+from docx import Document
 from pptx import Presentation
+from HwpParser import HWPExtractor
 import pandas as pd
 import pathlib
 import os
@@ -25,15 +26,10 @@ class TextExtract:
                        secret_key=self.secretkey, secure=False)
         self.bucket_name = bucket_name
 
-    def get_pdfpage_info_by_plumber(self, pdf_sourcepath)-> list:
-        print(f"Source path {pdf_sourcepath}")
+    def get_pdfpage_info_by_plumber(self, download_file_name)-> list:
+        print(f"Source path {download_file_name}")
         try:
-            if not os.path.exists("tmp/minio_file/"):
-                os.makedirs("tmp/minio_file/")
-            downloaded_file_path = "tmp/minio_file/" + pdf_sourcepath
-            self.minio_client.fget_object(self.bucket_name, pdf_sourcepath, downloaded_file_path)
-
-            pdfplumb = pdfplumber.open(downloaded_file_path)
+            pdfplumb = pdfplumber.open(download_file_name)
             file_extract_contents = ""
 
             for page_num, plumb_page in enumerate(pdfplumb.pages):
@@ -73,7 +69,7 @@ class TextExtract:
                         file_extract_contents += line_contents + "\n"
 
             file_extract_contents = re.sub(r"(?<![\.\?\!])\n", " ", file_extract_contents)
-            print(f"{pdf_sourcepath} extracted")
+            print(f"{download_file_name} extracted")
             file_extract_contents = re.sub(r"\(cid:[0-9]+\)", "", file_extract_contents)
             return file_extract_contents
         except Exception as e:
@@ -82,46 +78,52 @@ class TextExtract:
     def extract_file_content(self, file_name):
         try:
             formed_clear_contents = ''
-            f_extension = pathlib.Path(file_name).suffix
+            if not os.path.exists("tmp/minio_file/"):
+                os.makedirs("tmp/minio_file/")
+            download_file_name = "tmp/minio_file/" + file_name
+            self.minio_client.fget_object(self.bucket_name, file_name, download_file_name)
+
+            f_extension = pathlib.Path(download_file_name).suffix
             f_extension = f_extension.lower()
+
             if f_extension.endswith('.pdf'):
-                formed_clear_contents = self.get_pdfpage_info_by_plumber(file_name)
+                formed_clear_contents = self.get_pdfpage_info_by_plumber(download_file_name)
                 print(formed_clear_contents)
 
             elif f_extension.endswith('.hwp'):
-                hwp_obj = HWPExtractor(file_name)
+                hwp_obj = HWPExtractor(download_file_name)
                 hwp_text = hwp_obj.get_text()
                 formed_clear_contents = hwp_text
 
             elif f_extension.endswith('.docx') or f_extension.endswith('.doc'):
-                print('word loader for ', file_name)
-                loader = UnstructuredWordDocumentLoader(file_name)
+                print('word loader for ', download_file_name)
+                loader = UnstructuredWordDocumentLoader(download_file_name)
                 docs = loader.load()
                 for page in docs:
                     formed_clear_contents += page.page_content
 
             elif f_extension.endswith('.txt'):
-                loader = TextLoader(file_name)
+                loader = TextLoader(download_file_name)
                 docs = loader.load()
                 for page in docs:
                     formed_clear_contents += page.page_content
 
             elif f_extension.endswith('.xlsx') or f_extension.endswith('.xls'):
-                print('excel loader for ', file_name)
-                df = pd.read_excel(file_name)
+                print('excel loader for ', download_file_name)
+                df = pd.read_excel(download_file_name)
                 df_markdown = df.to_markdown()
                 formed_clear_contents = df_markdown
 
             elif f_extension.endswith('.csv'):
-                print('csv loader for ', file_name)
-                df = pd.read_csv(file_name)
+                print('csv loader for ', download_file_name)
+                df = pd.read_csv(download_file_name)
                 df_markdown = df.to_markdown()
                 formed_clear_contents = df_markdown
 
             elif f_extension.endswith('.pptx') or f_extension.endswith('.ppt'):
                 try:
-                    print('ppt(x) loader for ', file_name)
-                    prs = Presentation(file_name)
+                    print('ppt(x) loader for ', download_file_name)
+                    prs = Presentation(download_file_name)
                     for idx, slide in enumerate(prs.slides):
                         for shape in slide.shapes:
                             if not shape.has_text_frame:
@@ -135,10 +137,10 @@ class TextExtract:
 
             else:
                 print("Error: invalid file type")
-                print(file_name)
+                print(download_file_name)
 
         except Exception as e:
-            print(f"Error processing {file_name}: {e}")
+            print(f"Error processing {download_file_name}: {e}")
             return 0, None, str(e)
         return 1, formed_clear_contents, "ok"
 
@@ -163,5 +165,6 @@ class TextExtract:
                         fw.write(contents)
 
 
-te = TextExtract(bucket_name="opds-sample")
+# te = TextExtract(bucket_name="opds-sample")
+te = TextExtract(bucket_name="guest003")
 te.extract_all()
