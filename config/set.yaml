@@ -1,0 +1,9 @@
+openai:
+  apikey: ""
+  embedding_model: ""
+  chat_model: ""
+
+minio:
+  address: ""
+  accesskey:
+  secretkey:

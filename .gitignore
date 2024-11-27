@@ -1,0 +1,15 @@
+*.py[cod]
+*.log
+log/
+config/set-dev.yaml
+.venv/
+.idea/
+.ipynb_checkpoints/
+.DS_Store
+result/
+tmp/
+.locks/
+unsloth
+raw_data
+outputs
+
