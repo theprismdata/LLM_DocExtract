@@ -46,3 +46,7 @@ python DocumentExtract.py
 ```
 결과물 result 폴더에 디렉토리가 생성되면서 text로 변환된 파일 생성됨.
 ```
+```
+지원되는 문서 포맷
+doc, ppt, xls, pdf, txt
+```
