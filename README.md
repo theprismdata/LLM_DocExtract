@@ -36,5 +36,5 @@ python DocumentExtract.py
 지원되는 문서 포맷
 doc, ppt, xls, pdf, txt
 ```
-
+Extracted Text
 ![table_ex](https://github.com/user-attachments/assets/0c2466ef-c685-4888-90c9-9050d5b3fbe1)
