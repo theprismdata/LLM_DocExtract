@@ -17,7 +17,6 @@ class HWPExtractor(object):
         self._compressed = self.is_compressed(self._ole)
         self.text = self._get_text()
 
-    # 파일 불러오기
     def load(self, filename):
         return olefile.OleFileIO(filename)
 
