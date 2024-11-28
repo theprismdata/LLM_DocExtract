@@ -105,7 +105,6 @@ class TextExtract:
                     page_textonly_filtering = re.sub(r"(?<![\.\?\!])\n", " ", page_textonly_filtering)
                     file_extract_contents += page_textonly_filtering
 
-        # file_extract_contents = re.sub(r"(?<![\.\?\!])\n", " ", file_extract_contents)
         file_extract_contents = re.sub(r"\(cid:[0-9]+\)", "", file_extract_contents)
         print('Go Next document')
         return file_extract_contents
@@ -254,6 +253,5 @@ class TextExtract:
                         print(contents)
                         fw.write(contents)
 
-te = TextExtract(bucket_name="f5e4aeaf4ad899a3a0bf79fea05b7b96820b9103")
-# te = TextExtract(bucket_name="guest003")
+te = TextExtract(bucket_name="")
 te.extract_all()
