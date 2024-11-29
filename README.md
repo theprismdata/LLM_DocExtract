@@ -53,6 +53,11 @@ Extracted Text
 ![table_ex](https://github.com/user-attachments/assets/0c2466ef-c685-4888-90c9-9050d5b3fbe1)
 
 ### Stage 2.FineTunning을 위한 QA Set 생성
+https://ollama.com 에서 ollama 다운로드 받으시고, 아래의 pull 명령으로 모델을 로컬에 받으시기 바랍니다. 
+```
+ollama pull llama3.1 
+```
+
 QASet 추출 자동화를 위해 LLM을 사용하는 경우가 있는데 여기서는 GPT를 사용하지 않고,로컬 시스템의 GPU를 사용하였습니다.
 
 Extract-QA-Fair-Ollama-Hugging.ipynb에서는 위에서 추출한 텍스트 문서를 기반으로 QA Set을 생성합니다.
