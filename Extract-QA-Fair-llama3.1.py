@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # coding: utf-8
-import gc
 import torch
 from langchain_community.chat_models import ChatOllama
 from langchain_core.prompts import PromptTemplate
@@ -15,8 +14,10 @@ import glob
 import json
 import yaml
 
-gc.collect()
 torch.cuda.empty_cache()
+# import gc
+# gc.collect()
+
 class ExtractQAFair:
     def __init__(self, model_id, output_jsonl, repository_name):
         with open('config/set-dev.yaml') as f:
@@ -89,7 +90,7 @@ class ExtractQAFair:
             element_text = rf.readlines()
 
         qa_pair = []
-        element_text = element_text[:3]
+        # element_text = element_text[:3]
         for idx, text_element in enumerate(tqdm(element_text)):
             try:
                 if text_element.count('|') > 1:
@@ -125,7 +126,6 @@ class ExtractQAFair:
 
         with open(self.output_jsonl, "w", encoding="UTF-8-sig") as jsonf:
             for qa in qa_list:
-                print(qa)
                 jsonf.write(json.dumps(qa, ensure_ascii=False) +"\n")
         self.dataset = load_dataset("json", data_files=self.output_jsonl)
 
@@ -143,5 +143,7 @@ class ExtractQAFair:
 
 extract = ExtractQAFair(model_id='llama3.1', output_jsonl='qa_pair_llama3.jsonl', repository_name='prismdata/KDI-DATASET-2014')
 extract.gen_qa_set()
-print(extract.dataset)
+print(extract.dataset['train'])
 extract.push_to_hub()
+
+torch.cuda.empty_cache()
