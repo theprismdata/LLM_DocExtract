@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 import torch
-from langchain_community.chat_models import ChatOllama
+print("Clean cuda cache")
+torch.cuda.empty_cache()
+
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from datasets import load_dataset    
+from datasets import load_dataset
 from huggingface_hub import HfApi
 from datasets import DatasetDict
 import os
@@ -13,8 +15,7 @@ from tqdm import tqdm
 import glob
 import json
 import yaml
-
-torch.cuda.empty_cache()
+from langchain_community.chat_models import ChatOllama
 # import gc
 # gc.collect()
 
@@ -76,7 +77,7 @@ class ExtractQAFair:
         print(json_fmt)
         return json_fmt
 
-    def gen_qa_set(self):
+    def generate_qa_set(self):
         model = ChatOllama(model=self.model_id, temperature=0, format='json')
 
         chain = (
@@ -129,6 +130,9 @@ class ExtractQAFair:
                 jsonf.write(json.dumps(qa, ensure_ascii=False) +"\n")
         self.dataset = load_dataset("json", data_files=self.output_jsonl)
 
+    def load_ds(self):
+        self.dataset = load_dataset("json", data_files=self.output_jsonl)
+
     def push_to_hub(self):
         train_testvalid = self.dataset['train'].train_test_split(test_size=0.2)
         test_valid = train_testvalid['test'].train_test_split(test_size=0.5)
@@ -137,13 +141,23 @@ class ExtractQAFair:
             'test': test_valid['test'],
             'valid': test_valid['train']})
 
-        #Hugginfface push
-        # api = HfApi()
         ds.push_to_hub(self.repo_name, token=self.huggingface_token)
 
 extract = ExtractQAFair(model_id='llama3.1', output_jsonl='qa_pair_llama3.jsonl', repository_name='prismdata/KDI-DATASET-2014')
-extract.gen_qa_set()
-print(extract.dataset['train'])
+
+"""
+Generate new dataset
+"""
+#extract.generate_qa_set()
+
+"""
+Load generated dataset
+"""
+extract.load_ds()
+train_ds = extract.dataset['train']
+train_df = train_ds.to_pandas()
+print(train_df)
+
 extract.push_to_hub()
 
 torch.cuda.empty_cache()
