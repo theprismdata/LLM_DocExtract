@@ -41,6 +41,8 @@ bucket_name에 가져올 문서가 포함된 버킷 이름을 설정
 문서 추출
 python DocumentExtract.py
 ```
+
+
 ```
 결과물 result 폴더에 디렉토리가 생성되면서 text로 변환된 파일 생성됨.
 ```
@@ -60,7 +62,11 @@ ollama pull llama3.1
 
 QASet 추출 자동화를 위해 LLM을 사용하는 경우가 있는데 여기서는 GPT를 사용하지 않고,로컬 시스템의 GPU를 사용하였습니다.
 
-Extract-QA-Fair-Ollama-Hugging.ipynb에서는 위에서 추출한 텍스트 문서를 기반으로 QA Set을 생성합니다.
+    
+~~Extract-QA-Fair-Ollama-Hugging.ipynb에서는 위에서 추출한 텍스트 문서를 기반으로 QA Set을 생성합니다.~~
+Extract-QA-Fair-llama3.1.py를 참조에서 수행하며 qa_pair_llama3.jsonl로 결과가 출력됩니다.
+
+!주의 146라인에 repository_name에 Huggingface 저장소를 설정하시기 바랍니다.
 
 추출한 텍스트 문서는 QA_input_docs에 있으며 KDI 연구 리포트를 사용하였습니다.
 

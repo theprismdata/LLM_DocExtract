@@ -143,7 +143,7 @@ class ExtractQAFair:
 
         ds.push_to_hub(self.repo_name, token=self.huggingface_token)
 
-extract = ExtractQAFair(model_id='llama3.1', output_jsonl='qa_pair_llama3.jsonl', repository_name='prismdata/KDI-DATASET-2014')
+extract = ExtractQAFair(model_id='llama3.1', output_jsonl='qa_pair_llama3.jsonl', repository_name='')
 
 """
 Generate new dataset
