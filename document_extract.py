@@ -36,6 +36,25 @@ class TextExtract:
         self._bucket_name = bucket_name
         self.del_table = True
 
+    def is_table_of_contents(self, page_text):
+        """
+        특정 페이지가 목차인지 판단
+        :param page_text: 페이지에서 추출한 텍스트
+        :return: 목차 페이지 여부 (True/False)
+        """
+        # 목차 페이지의 일반적인 패턴들
+        patterns = [
+            r'\.{5,}\s*\d+',  # 예: "Chapter 1 ...... 12"
+            r'\·{5,}\d+',
+            r'\b\d+\s*\.\s*\d+',  # 예: "1.1 Introduction"
+            r'(Table of Contents|목차)',  # "Table of Contents" 또는 "목차"
+            r'표 목 차',  # "Table of Contents" 또는 "목차"
+        ]
+        for pattern in patterns:
+            if re.search(pattern, page_text, re.IGNORECASE):
+                return True
+        return False
+
     def get_context_pdffile_by_plumber(self, source_file_name:str)-> list:
         """
         get context from pdf file
@@ -51,13 +70,19 @@ class TextExtract:
             print(f"I/O error({e.errno}): {e.strerror}")
             return None
 
-        isSkeep = False
-        for page_num, _ in enumerate(pdfplumb.pages):
+        total_pages = len(pdfplumb.pages)
+
+        for page_num in range(1, total_pages):
             page_plumb_contents = {}
             table_list = []
-            pil_img = pdfplumb.pages[page_num].to_image(resolution=1200)
+
+            # pil_img = pdfplumb.pages[page_num].to_image(resolution=1200)
             # if page_num == 12:
             #     pil_img.save(f'{source_file_name}-{page_num}.png',"PNG", quantize=False)
+            whole_text_a_page = ""
+            if self.is_table_of_contents(pdfplumb.pages[page_num].extract_text()) is True:
+                continue
+
             for table_info in pdfplumb.pages[page_num].find_tables():
                 x0 = table_info.bbox[0]
                 y0 = table_info.bbox[1]
@@ -87,6 +112,13 @@ class TextExtract:
                         else:
                             page_plumb_contents[int(y0)] = {"type": "text", "value":  txt_content}
                     else:
+                        if y0 < 64.857: continue
+                        if y0 >= 764.860: #Footer skeep
+                            print(f"Page Footer Skeep : {x0} {y0} {txt_content}")
+                            continue
+                        if x0 > 200: #Innter title
+                            print(f"Inner title  {x0} {y0} {txt_content}")
+                            continue
                         page_plumb_contents[int(y0)] = {"type": "text", "value": txt_content}
 
                 except Exception as e:
@@ -98,23 +130,28 @@ class TextExtract:
                 pos_list = sorted(pos_list)
                 page_exist_tbl = False
                 page_textonly_filtering = ""
+
                 for position in pos_list:
+                    line_text = page_plumb_contents[position]["value"]
                     if page_plumb_contents[position]["type"] == "table":
                         if self.del_table == False:
                             page_textonly_filtering = re.sub(r"(?<![\.\?\!])\n", " ", page_textonly_filtering)
-                            whole_page_extractinfo += page_textonly_filtering + "\n" + page_plumb_contents[position]["value"] + "\n"
-
+                            whole_text_a_page += page_textonly_filtering + "\n" + line_text + "\n"
                         page_textonly_filtering = ""
                         page_exist_tbl = True
                     else:
-                        page_textonly_filtering += page_plumb_contents[position]["value"] + "\n"
+                        if line_text.endswith("다.") == True:
+                            page_textonly_filtering += line_text + "\n"
+                        else:
+                            page_textonly_filtering += line_text
 
                 if page_exist_tbl is False:
                     page_textonly_filtering = re.sub(r"(?<![\.\?\!])\n", " ", page_textonly_filtering)
-                    whole_page_extractinfo += page_textonly_filtering
+                    whole_text_a_page += page_textonly_filtering
+            print(f"{page_num} : {whole_text_a_page}")
+            whole_page_extractinfo += re.sub(r"\(cid:[0-9]+\)", "", whole_text_a_page)
 
-            print(f"Page Number : {page_num} : {whole_page_extractinfo}")
-        whole_page_extractinfo = re.sub(r"\(cid:[0-9]+\)", "", whole_page_extractinfo)
+        print(whole_page_extractinfo)
         print('Go Next document')
         return whole_page_extractinfo
 
