@@ -55,7 +55,9 @@ class TextExtract:
         for page_num, _ in enumerate(pdfplumb.pages):
             page_plumb_contents = {}
             table_list = []
-            # im = pdfplumb.pages[page_num].to_image(resolution=150)
+            pil_img = pdfplumb.pages[page_num].to_image(resolution=1200)
+            # if page_num == 12:
+            #     pil_img.save(f'{source_file_name}-{page_num}.png',"PNG", quantize=False)
             for table_info in pdfplumb.pages[page_num].find_tables():
                 x0 = table_info.bbox[0]
                 y0 = table_info.bbox[1]
