@@ -46,15 +46,16 @@ class TextExtract:
         try:
             pdfplumb = pdfplumber.open(source_file_name)
             whole_page_extractinfo = ""
-
             page_exist_tbl = False
         except IOError as e:
             print(f"I/O error({e.errno}): {e.strerror}")
+            return None
 
+        isSkeep = False
         for page_num, _ in enumerate(pdfplumb.pages):
             page_plumb_contents = {}
-
             table_list = []
+            # im = pdfplumb.pages[page_num].to_image(resolution=150)
             for table_info in pdfplumb.pages[page_num].find_tables():
                 x0 = table_info.bbox[0]
                 y0 = table_info.bbox[1]
@@ -67,25 +68,27 @@ class TextExtract:
                 df.replace('Ÿ', '*', inplace=True)
                 page_plumb_contents[int(y0)] = {"type":"table",
                                                 "value": df.to_markdown()}
-
             for content in pdfplumb.pages[page_num].extract_text_lines():
+                txt_content = content['text']
                 x0 = content['x0']
                 y0 = content['top']
                 x1 = content['x1']
                 y1 = content['bottom']
-                if len(table_list) > 0:
-                    if (table_list[0][0] < x0 and table_list[0][1] < y0 and
-                            table_list[0][2] > x1 and table_list[0][3] > y1):
-                        """
-                        Filter context in outbound detected table contents
-                        """
-                        pass
+                try:
+                    if len(table_list) > 0:
+                        if (table_list[0][0] < x0 and table_list[0][1] < y0 and
+                                table_list[0][2] > x1 and table_list[0][3] > y1):
+                            """
+                            Filter context in outbound detected table contents
+                            """
+                            pass
+                        else:
+                            page_plumb_contents[int(y0)] = {"type": "text", "value":  txt_content}
                     else:
-                        page_plumb_contents[int(y0)] = {"type": "text",
-                                                        "value":  content['text']}
-                else:
-                    page_plumb_contents[int(y0)] = {"type": "text",
-                                                    "value": content['text']}
+                        page_plumb_contents[int(y0)] = {"type": "text", "value": txt_content}
+
+                except Exception as e:
+                    print(str(e))
 
             if len(page_plumb_contents) > 0:
                 #각 페이지 단위 콘텐츠 결합
@@ -108,6 +111,7 @@ class TextExtract:
                     page_textonly_filtering = re.sub(r"(?<![\.\?\!])\n", " ", page_textonly_filtering)
                     whole_page_extractinfo += page_textonly_filtering
 
+            print(f"Page Number : {page_num} : {whole_page_extractinfo}")
         whole_page_extractinfo = re.sub(r"\(cid:[0-9]+\)", "", whole_page_extractinfo)
         print('Go Next document')
         return whole_page_extractinfo
