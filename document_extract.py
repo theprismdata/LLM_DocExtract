@@ -45,7 +45,7 @@ class TextExtract:
         print(f"Source path {source_file_name}")
         try:
             pdfplumb = pdfplumber.open(source_file_name)
-            file_extract_contents = ""
+            whole_page_extractinfo = ""
 
             page_exist_tbl = False
         except IOError as e:
@@ -97,7 +97,7 @@ class TextExtract:
                     if page_plumb_contents[position]["type"] == "table":
                         if self.del_table == False:
                             page_textonly_filtering = re.sub(r"(?<![\.\?\!])\n", " ", page_textonly_filtering)
-                            file_extract_contents += page_textonly_filtering + "\n" + page_plumb_contents[position]["value"] + "\n"
+                            whole_page_extractinfo += page_textonly_filtering + "\n" + page_plumb_contents[position]["value"] + "\n"
 
                         page_textonly_filtering = ""
                         page_exist_tbl = True
@@ -106,11 +106,11 @@ class TextExtract:
 
                 if page_exist_tbl is False:
                     page_textonly_filtering = re.sub(r"(?<![\.\?\!])\n", " ", page_textonly_filtering)
-                    file_extract_contents += page_textonly_filtering
+                    whole_page_extractinfo += page_textonly_filtering
 
-        file_extract_contents = re.sub(r"\(cid:[0-9]+\)", "", file_extract_contents)
+        whole_page_extractinfo = re.sub(r"\(cid:[0-9]+\)", "", whole_page_extractinfo)
         print('Go Next document')
-        return file_extract_contents
+        return whole_page_extractinfo
 
     def iter_doc_blocks(self, parent):
         """
