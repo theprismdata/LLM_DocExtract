@@ -34,8 +34,9 @@ class TextExtract:
                                    secret_key=self._secretkey,
                                    secure=False)
         self._bucket_name = bucket_name
+        self.del_table = True
 
-    def get_context_pdffile_by_plumber(self, source_file_name)-> list:
+    def get_context_pdffile_by_plumber(self, source_file_name:str)-> list:
         """
         get context from pdf file
         :param source_file_name: source pdf file path
@@ -94,8 +95,10 @@ class TextExtract:
                 page_textonly_filtering = ""
                 for position in pos_list:
                     if page_plumb_contents[position]["type"] == "table":
-                        page_textonly_filtering = re.sub(r"(?<![\.\?\!])\n", " ", page_textonly_filtering)
-                        file_extract_contents += page_textonly_filtering + "\n" + page_plumb_contents[position]["value"] + "\n"
+                        if self.del_table == False:
+                            page_textonly_filtering = re.sub(r"(?<![\.\?\!])\n", " ", page_textonly_filtering)
+                            file_extract_contents += page_textonly_filtering + "\n" + page_plumb_contents[position]["value"] + "\n"
+
                         page_textonly_filtering = ""
                         page_exist_tbl = True
                     else:
@@ -253,5 +256,6 @@ class TextExtract:
                         print(contents)
                         fw.write(contents)
 
-te = TextExtract(bucket_name="")
+te = TextExtract(bucket_name="f5e4aeaf4ad899a3a0bf79fea05b7b96820b9103")
+te.del_table = True
 te.extract_all()
