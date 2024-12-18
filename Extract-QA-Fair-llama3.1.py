@@ -1,43 +1,29 @@
 #!/usr/bin/env python
 # coding: utf-8
-import torch
-print("Clean cuda cache")
-torch.cuda.empty_cache()
-
 from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from datasets import load_dataset
-from huggingface_hub import HfApi
 from datasets import DatasetDict
-import os
 from tqdm import tqdm
-import glob
 import json
 import yaml
-from langchain_community.chat_models import ChatOllama
-# import gc
-# gc.collect()
+from langchain_ollama import OllamaLLM, ChatOllama
+
 
 class ExtractQAFair:
-    def __init__(self, model_id, output_jsonl, repository_name):
-        with open('config/set-dev.yaml') as f:
+    def __init__(self, model_id, output_jsonl):
+        with open('config/set.yaml') as f:
             config = yaml.load(f, Loader=yaml.FullLoader)
             self.huggingface_token = config['Huggingface']['token']
         self.model_id = model_id
         self.output_jsonl = output_jsonl
-
-        self.repo_name = repository_name
         self.input_info = []
         self.input_info.append({"FileName": "QA_input_docs/2014-05-정책효과성 증대를 위한 집행과학에 관한 연구.pdf.txt",
                            "Source": "KDI 연구보고서 2014-05 정책효과성 증대를 위한 집행과학에 관한 연구 김재훈"})
 
         self.prompt = PromptTemplate.from_template(
             """Context information is below. You are only aware of this context and nothing else.
-        ---------------------
-        
-        {context}
-        
+        ---------------------        
+        {context}        
         ---------------------
         Given this context, generate only questions based on the below query.
         You are an Teacher/Professor in {domain}. 
@@ -77,22 +63,19 @@ class ExtractQAFair:
         print(json_fmt)
         return json_fmt
 
-    def generate_qa_set(self):
-        model = ChatOllama(model=self.model_id, temperature=0, format='json')
-
-        chain = (
-            self.prompt
-            | model
-            | self.custom_json_parser
-        )
-
+    def generate_qa_set(self, numofsample=10):
         file_index = 0
         with open(self.input_info[file_index]["FileName"], "r", encoding="utf-8") as rf:
-            element_text = rf.readlines()
+            self.lines = rf.readlines()
 
+        model = ChatOllama(model=self.model_id, temperature=0, format='json')
+        chain =  self.prompt | model| self.custom_json_parser
+        if numofsample is None:
+            lines_sample = self.lines
+        else:
+            lines_sample = self.lines[:numofsample]
         qa_pair = []
-        # element_text = element_text[:3]
-        for idx, text_element in enumerate(tqdm(element_text)):
+        for idx, text_element in enumerate(tqdm(lines_sample)):
             try:
                 if text_element.count('|') > 1:
                     print("Skeep Table Detect")
@@ -111,6 +94,7 @@ class ExtractQAFair:
                 print("---")
             except Exception as e:
                 eqa_f = open("qa_error_debug.txt", "a", encoding='utf-8')
+                print(e)
                 eqa_f.write(text_element + '\n' + str(e)+'\n')
                 eqa_f.close()
 
@@ -118,11 +102,12 @@ class ExtractQAFair:
         for qa in qa_pair:
             key_list = list(qa.keys())
             qa_modified = {"question":'', "input":'', 'answer': '', "source": self.input_info[file_index]["Source"]}
-            for key in key_list:
-                if "q" in key.lower():
-                    qa_modified['question']=qa[key]
-                elif "a" in key.lower():
-                    qa_modified['answer']=qa[key]
+
+            for item in key_list:
+                if "q" in item.lower():
+                    qa_modified['question']=qa[item]
+                elif "a" in item.lower():
+                    qa_modified['answer']=qa[item]
             qa_list.append(qa_modified)
 
         with open(self.output_jsonl, "w", encoding="UTF-8-sig") as jsonf:
@@ -133,7 +118,7 @@ class ExtractQAFair:
     def load_ds(self):
         self.dataset = load_dataset("json", data_files=self.output_jsonl)
 
-    def push_to_hub(self):
+    def push_to_hub(self, repository_name):
         train_testvalid = self.dataset['train'].train_test_split(test_size=0.2)
         test_valid = train_testvalid['test'].train_test_split(test_size=0.5)
         ds = DatasetDict({
@@ -141,23 +126,23 @@ class ExtractQAFair:
             'test': test_valid['test'],
             'valid': test_valid['train']})
 
-        ds.push_to_hub(self.repo_name, token=self.huggingface_token)
+        ds.push_to_hub(repository_name, token=self.huggingface_token)
 
-extract = ExtractQAFair(model_id='llama3.1', output_jsonl='qa_pair_llama3.jsonl', repository_name='')
 
-"""
-Generate new dataset
-"""
-#extract.generate_qa_set()
+if __name__=="__main__":
+    extract = ExtractQAFair(model_id='llama3.1', output_jsonl='qa_pair_llama3.jsonl', repository_name='your huggingface repository id')
+    """
+    Generate new dataset
+    """
+    extract.generate_qa_set(numofsample=None)
 
-"""
-Load generated dataset
-"""
-extract.load_ds()
-train_ds = extract.dataset['train']
-train_df = train_ds.to_pandas()
-print(train_df)
-
-extract.push_to_hub()
-
-torch.cuda.empty_cache()
+    """
+    Load generated dataset
+    """
+    extract.load_ds()
+    print("----------------Train Dataset-----------")
+    train_ds = extract.dataset['train']
+    train_df = train_ds.to_pandas()
+    print(train_df)
+    print("Push to Hugging face")
+    extract.push_to_hub()

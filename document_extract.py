@@ -23,7 +23,7 @@ class TextExtract:
     Document extration main class
     """
     def __init__(self, bucket_name):
-        with open('config/set-dev.yaml', "r", encoding="utf-8") as f:
+        with open('config/set.yaml', "r", encoding="utf-8") as f:
             config = yaml.load(f, Loader=yaml.FullLoader)
             minio_info = config['minio']
         self._minio_address =  minio_info['address']
