@@ -34,8 +34,9 @@ class TextExtract:
                                    secret_key=self._secretkey,
                                    secure=False)
         self._bucket_name = bucket_name
+        self.del_table = True
 
-    def get_context_pdffile_by_plumber(self, source_file_name)-> list:
+    def get_context_pdffile_by_plumber(self, source_file_name:str)-> list:
         """
         get context from pdf file
         :param source_file_name: source pdf file path
@@ -44,16 +45,19 @@ class TextExtract:
         print(f"Source path {source_file_name}")
         try:
             pdfplumb = pdfplumber.open(source_file_name)
-            file_extract_contents = ""
-
+            whole_page_extractinfo = ""
             page_exist_tbl = False
         except IOError as e:
             print(f"I/O error({e.errno}): {e.strerror}")
+            return None
 
+        isSkeep = False
         for page_num, _ in enumerate(pdfplumb.pages):
             page_plumb_contents = {}
-
             table_list = []
+            pil_img = pdfplumb.pages[page_num].to_image(resolution=1200)
+            # if page_num == 12:
+            #     pil_img.save(f'{source_file_name}-{page_num}.png',"PNG", quantize=False)
             for table_info in pdfplumb.pages[page_num].find_tables():
                 x0 = table_info.bbox[0]
                 y0 = table_info.bbox[1]
@@ -66,25 +70,27 @@ class TextExtract:
                 df.replace('Ÿ', '*', inplace=True)
                 page_plumb_contents[int(y0)] = {"type":"table",
                                                 "value": df.to_markdown()}
-
             for content in pdfplumb.pages[page_num].extract_text_lines():
+                txt_content = content['text']
                 x0 = content['x0']
                 y0 = content['top']
                 x1 = content['x1']
                 y1 = content['bottom']
-                if len(table_list) > 0:
-                    if (table_list[0][0] < x0 and table_list[0][1] < y0 and
-                            table_list[0][2] > x1 and table_list[0][3] > y1):
-                        """
-                        Filter context in outbound detected table contents
-                        """
-                        pass
+                try:
+                    if len(table_list) > 0:
+                        if (table_list[0][0] < x0 and table_list[0][1] < y0 and
+                                table_list[0][2] > x1 and table_list[0][3] > y1):
+                            """
+                            Filter context in outbound detected table contents
+                            """
+                            pass
+                        else:
+                            page_plumb_contents[int(y0)] = {"type": "text", "value":  txt_content}
                     else:
-                        page_plumb_contents[int(y0)] = {"type": "text",
-                                                        "value":  content['text']}
-                else:
-                    page_plumb_contents[int(y0)] = {"type": "text",
-                                                    "value": content['text']}
+                        page_plumb_contents[int(y0)] = {"type": "text", "value": txt_content}
+
+                except Exception as e:
+                    print(str(e))
 
             if len(page_plumb_contents) > 0:
                 #각 페이지 단위 콘텐츠 결합
@@ -94,8 +100,10 @@ class TextExtract:
                 page_textonly_filtering = ""
                 for position in pos_list:
                     if page_plumb_contents[position]["type"] == "table":
-                        page_textonly_filtering = re.sub(r"(?<![\.\?\!])\n", " ", page_textonly_filtering)
-                        file_extract_contents += page_textonly_filtering + "\n" + page_plumb_contents[position]["value"] + "\n"
+                        if self.del_table == False:
+                            page_textonly_filtering = re.sub(r"(?<![\.\?\!])\n", " ", page_textonly_filtering)
+                            whole_page_extractinfo += page_textonly_filtering + "\n" + page_plumb_contents[position]["value"] + "\n"
+
                         page_textonly_filtering = ""
                         page_exist_tbl = True
                     else:
@@ -103,11 +111,12 @@ class TextExtract:
 
                 if page_exist_tbl is False:
                     page_textonly_filtering = re.sub(r"(?<![\.\?\!])\n", " ", page_textonly_filtering)
-                    file_extract_contents += page_textonly_filtering
+                    whole_page_extractinfo += page_textonly_filtering
 
-        file_extract_contents = re.sub(r"\(cid:[0-9]+\)", "", file_extract_contents)
+            print(f"Page Number : {page_num} : {whole_page_extractinfo}")
+        whole_page_extractinfo = re.sub(r"\(cid:[0-9]+\)", "", whole_page_extractinfo)
         print('Go Next document')
-        return file_extract_contents
+        return whole_page_extractinfo
 
     def iter_doc_blocks(self, parent):
         """
@@ -253,5 +262,6 @@ class TextExtract:
                         print(contents)
                         fw.write(contents)
 
-te = TextExtract(bucket_name="")
+te = TextExtract(bucket_name="f5e4aeaf4ad899a3a0bf79fea05b7b96820b9103")
+te.del_table = True
 te.extract_all()
